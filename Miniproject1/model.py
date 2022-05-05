@@ -104,7 +104,7 @@ class Model():
         else:
             self.model.load_state_dict(torch.load('bestmodel.pth', map_location='cpu'))
 
-    def train(self, train_input, train_target) -> None:
+    def train(self, train_input, train_target, num_epochs) -> None:
     #:train_input: tensor of size (N, C, H, W) containing a noisy version of the images. same images, which only differs from the input by their noise.
     #:train_target: tensor of size (N, C, H, W) containing another noisy version of the
         train_input, train_target = train_input.to(self.device).type(torch.float), train_target.to(self.device).type(torch.float)
@@ -114,14 +114,14 @@ class Model():
         device = self.device
         model = model.to(device)
         optimizer = self.optimizer
+        num_epochs = self.num_epochs
 
-        nb_epochs = 100
-        mini_batch_size = 100
+        mini_batch_size = 32
 
         model.train()
         print(model)
         print("Starting Training Loop...")
-        for epoch in range(nb_epochs):
+        for epoch in range(num_epochs):
             print('-' * 10)
             running_loss = 0.0
             for b in range(0, train_input.size(0), mini_batch_size):
