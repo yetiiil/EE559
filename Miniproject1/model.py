@@ -7,85 +7,121 @@ from torch.nn import functional as F
 class Model():
     def __init__(self) -> None :
     ## instantiate model + optimizer + loss function + any other stuff you need
-        class UNet(nn.Module):
-            def __init__(self, in_channels=3, out_channels=3):
+        class UNet (nn.Module):
+            def __init__(self,in_channels = 3, out_channels = 3):
+                '''
+                initialize the unet 
+                '''
                 super(UNet, self).__init__()
-                # Layers: enc_conv0, enc_conv1, pool1
-                self._block1 = nn.Sequential(
-                    nn.Conv2d(in_channels, 48, 3, stride=1, padding=1),
+
+                self.encode1 = nn.Sequential(
+                    nn.Conv2d(in_channels,48,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
-                    nn.Conv2d(48, 48, 3, padding=1),
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
                     nn.MaxPool2d(2))
-
-                # Layers: enc_conv(i), pool(i); i=2..5
-                self._block2 = nn.Sequential(
-                    nn.Conv2d(48, 48, 3, stride=1, padding=1),
+        
+                self.encode2 = nn.Sequential(
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
                     nn.MaxPool2d(2))
-
-                # Layers: enc_conv6, upsample5
-                self._block3 = nn.Sequential(
-                    nn.Conv2d(48, 48, 3, stride=1, padding=1),
+        
+                self.encode3 = nn.Sequential(
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.MaxPool2d(2))
+        
+                self.encode4 = nn.Sequential(
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.MaxPool2d(2))
+        
+                self.encode5 = nn.Sequential(
+                    nn.Conv2d(48,48,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
                     nn.ConvTranspose2d(48, 48, 3, stride=2, padding=1, output_padding=1))
-                    #nn.Upsample(scale_factor=2, mode='nearest'))
 
-                # Layers: dec_conv5a, dec_conv5b, upsample4
-                self._block4 = nn.Sequential(
-                    nn.Conv2d(96, 96, 3, stride=1, padding=1),
+                self.decode1 = nn.Sequential(
+                    nn.Conv2d(96,96,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
-                    nn.Conv2d(96, 96, 3, stride=1, padding=1),
+                    nn.Conv2d(96,96,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
-                    nn.ConvTranspose2d(96, 96, 3, stride=2, padding=1, output_padding=1))
-                    #nn.Upsample(scale_factor=2, mode='nearest'))
-
-                # Layers: dec_deconv(i)a, dec_deconv(i)b, upsample(i-1); i=4..2
-                self._block5 = nn.Sequential(
-                    nn.Conv2d(144, 96, 3, stride=1, padding=1),
-                    nn.ReLU(inplace=True),
-                    nn.Conv2d(96, 96, 3, stride=1, padding=1),
+                    nn.Conv2d(96,96,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
                     nn.ConvTranspose2d(96, 96, 3, stride=2, padding=1, output_padding=1))
-                    #nn.Upsample(scale_factor=2, mode='nearest'))
 
-                # Layers: dec_conv1a, dec_conv1b, dec_conv1c,
-                self._block6 = nn.Sequential(
-                    nn.Conv2d(96 + in_channels, 64, 3, stride=1, padding=1),
+                self.decode2 = nn.Sequential(
+                    nn.Conv2d(144,96,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
-                    nn.Conv2d(64, 32, 3, stride=1, padding=1),
+                    nn.Conv2d(96,96,3,stride=1,padding='same'),
                     nn.ReLU(inplace=True),
-                    nn.Conv2d(32, out_channels, 3, stride=1, padding=1),
-                    nn.LeakyReLU(0.1))
+                    nn.Conv2d(96,96,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(96, 96, 3, stride=2, padding=1, output_padding=1))
+        
+                self.decode3 = nn.Sequential(
+                    nn.Conv2d(144,96,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(96,96,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(96,96,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.ConvTranspose2d(96, 96, 3, stride=2, padding=1, output_padding=1))
+        
+                self.decode4 = nn.Sequential (
+                    nn.Conv2d(96 + in_channels,64,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(64,64,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(64,32,3,stride=1,padding='same'),
+                    nn.ReLU(inplace=True))
+        
+                ## output layer
+                self.output_layer = nn.Conv2d(32,out_channels,3,stride=1,padding='same')
 
-            def forward(self, x):
-                # Encoder
-                pool1 = self._block1(x)
-                pool2 = self._block2(pool1)
-                pool3 = self._block2(pool2)
-                pool4 = self._block2(pool3)
-                pool5 = self._block2(pool4)
-                pool6 = self._block2(pool5)
-                pool7 = self._block2(pool6)
+                ## initialize weight
+                self._init_weights()
 
-                # Decoder
-                upsample7 = self._block3(pool7)
-                concat7 = torch.cat((upsample7, pool6), dim=1)
-                upsample6 = self._block4(concat7)
-                concat6 = torch.cat((upsample6, pool5), dim=1)
-                upsample5 = self._block5(concat6)
-                concat5 = torch.cat((upsample5, pool4), dim=1)
-                upsample4 = self._block5(concat5)
-                concat4 = torch.cat((upsample4, pool3), dim=1)
-                upsample3 = self._block5(concat4)
-                concat3 = torch.cat((upsample3, pool2), dim=1)
-                upsample2 = self._block5(concat3)
-                concat2 = torch.cat((upsample2, pool1), dim=1)
-                upsample1 = self._block5(concat2)
-                concat1 = torch.cat((upsample1, x), dim=1)
-
-                # Final activation
-                return self._block6(concat1)
+            def forward(self,x):
+                '''
+                forward function
+                '''
+                pool1 = self.encode1(x)
+                pool2 = self.encode2(pool1)
+                pool3 = self.encode3(pool2)
+                pool4 = self.encode4(pool3)
+                upsample5 = self.encode5(pool4)
+                concat5 = torch.cat((upsample5,pool3),dim=1)
+                upsample4 = self.decode1(concat5)
+                concat4 = torch.cat((upsample4,pool2),dim=1)
+                upsample3 = self.decode2(concat4)
+                concat3 = torch.cat((upsample3,pool1),dim=1)
+                upsample2 = self.decode3(concat3)
+                concat2 = torch.cat((upsample2,x),dim =1)
+                umsample0 = self.decode4(concat2)
+                output = self.output_layer(umsample0)
+                return output
+    
+            def _init_weights(self):
+                """Initializes weights using He et al. (2015)."""
+                for m in self.modules():
+                    if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
+                        nn.init.kaiming_normal_(m.weight.data)
+                        nn.init.constant_(m.bias.data, 0)
 
         self.model = UNet()
 
