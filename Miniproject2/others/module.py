@@ -205,7 +205,9 @@ class TransposedConv2d(Module):
 
         self.weightGrads += gradMat.bmm(inputMat).sum(dim=0).T.reshape(self.weight.shape) # (ic, oc, s0, s1) grad for update filter
         self.biasGrads += grad.sum(dim=(0, 2, 3))
-        return gradMat.transpose(1, 2).mm(filterMat.T).transpose(1, 2).reshape(input.shape) # (bs, ic, h, w) grad for back propagation
+        
+        (bs, ocs0s1, hw) = gradMat.shape
+        return gradMat.transpose(1, 2).reshape(-1, ocs0s1).mm(filterMat.T).reshape(bs, hw, -1).transpose(1, 2).reshape(input.shape) # (bs, ic, h, w) grad for back propagation
 
     def param(self):
         return [(self.weight, self.weightGrads), (self.bias, self.biasGrads)]
