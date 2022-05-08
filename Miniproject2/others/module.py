@@ -46,21 +46,7 @@ class Sigmoid(Module):
         :return: 
         """
         return []
-
-    
-class Conv2d(Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
-        super().__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        if isinstance(kernel_size, int):
-            self.kernel_size = (kernel_size, kernel_size)
-        else:
-            self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-
-        
+      
 class ReLU(Module):
     """ReLU
     """
@@ -212,5 +198,95 @@ class TransposedConv2d(Module):
     def param(self):
         return [(self.weight, self.weightGrads), (self.bias, self.biasGrads)]
 
-    
+class Conv2d(Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
+        super().__init__()
+        
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.padding = padding
+
+        if (isinstance(kernel_size, int)):
+            self.kernel_size = (kernel_size, kernel_size)
+        elif (isinstance(kernel_size, tuple)):
+            self.kernel_size = kernel_size
+
+        if (isinstance(stride, int)):
+            self.stride = (stride, stride)
+        elif (isinstance(stride, tuple)):
+            self.stride = stride    
+
+        self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1]))
+        self.bias = empty(out_channels)
+
+        self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
+        self.biasGrads = empty(out_channels).zero_()
+        self.cache = {}
+
+    def _inputMat(self, input : Tensor) -> Tensor:
+        """
+        For input with the shape of (2, 2, h, w), 
+        it will be flatten and transposed into a (2, h*w, 2) matrix:
+                
+              ic0   ic1
+
+        d0:  |h*w| |h*w|
+
+        d1:  |h*w| |h*w|
+
+        """
+
+        (bs, c, _, _) = input.shape
+        return input.reshape(bs, c, -1).transpose(1, 2) # (bs, ic, h, w) -> (bs, h*w, ic)
+
+    def _filterMat(self) -> Tensor:
+        """
+        For weight with the shape of (2, 3, s0, s1), 
+        it will be flatten into a (2, 3*s0*s1) matrix:
+             
+               oc0     oc1     oc2
+
+        ic0: |s0*s1| |s0*s1| |s0*s1|
+
+        ic1: |s0*s1| |s0*s1| |s0*s1|
+
+        """
+
+        return self.weight.reshape(self.in_channels, -1) # (ic, oc, s0, s1) -> (ic, oc*s0*s1)
+
+    def forward(self, input : Tensor):
+        bs, ic, H, W = input.size()
+        ic, oc, h, w = self.weight.size()
+        unfold_input = torch.nn.functional.unfold(input, self.kernel_size, self.stride)
+        weight = self.weight.view(oc, -1)
+        output = ((weight @ unfold_input) + self.bias.view(-1,1)).view(bs, oc, ((H-h+1)/self.stride[0]).floor(), -1)
+
+        self.cache["unfold_input"] = unfold_input
+        self.cache["input"] = input
+
+        return output
+
+    def backward(self, gradwrtoutput: Tensor):
+        '''
+        gradwrtoutput shape (N, oc, Hout, Wout)
+        - Hout = 1 + (H + 2 * pad - h) / stride
+        - Wout = 1 + (W + 2 * pad - w) / stride
+        '''
+        input = self.cache["input"]
+        gradient_reshape = gradwrtoutput.permute(1, 2, 3, 0).reshape(self.out_channels, -1)
+        unfold_input = self.cache["unfold_input"].permute(2, 0, 1).reshape(gradient_reshape.shape[1], -1) 
+
+        self.weightGrads += (gradient_reshape @ unfold_input).reshape(self.weight.shape)
+        self.biasGrads += gradwrtoutput.sum(dim=(0, 2, 3))
+
+        weight_reshaped = self.weight.reshape(self.out_channels, -1)
+        dx = weight_reshaped.t() @ gradient_reshape
+        dx = dx.reshape(self.cache["unfold_input"].permute(1, 2, 0).shape).permute(2, 0, 1)
+        dx = dx.fold(dx, (input.shape[2],input.shape[3]), kernel_size=self.kernel_size, stride=self.stride)
+        return dx
+
+    def param(self):
+        return [(self.weight, self.weightGrads), (self.bias, self.biasGrads)]
+
+
 class Upsampling(Module):
