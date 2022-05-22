@@ -45,6 +45,7 @@ class Sigmoid(Module):
         :return: 
         """
         return []
+    
       
 class ReLU(Module):
     """ReLU
@@ -262,7 +263,7 @@ class Sequential(Module):
     def __init__(self, *mods) -> None:
         self.names = []
         self.modules = {}
-        self.params = []
+        self.param = []
 
     def add_module(self, name : str, mod : Module):
         self.names.append(name)
@@ -283,4 +284,25 @@ class Sequential(Module):
     
     def param(self):
         return self.params
+    
+    def state_dict(self):
+        states = {}
+        for name in self.names:
+            mod = self.modules[name]
+            if isinstance(mod, Conv2d) or isinstance(mod, TransposeConv2d):
+                states[name + ".weight"] = mod.weight
+                states[name + ".bias"] = mod.bias
+        return states
+    
+    def load_state_dict(self, states : dict):
+        for k, v in states:
+            name = k.split('.')[0]
+            mod = self.modules[name]
+            if isinstance(mod, Conv2d) or isinstance(mod, TransposeConv2d):
+                param = k.split('.')[1]
+                if param == "weight":
+                    mod.weight = v
+                elif param == "bias":
+                    mod.bias = v
+            
     
