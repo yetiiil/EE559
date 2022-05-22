@@ -1,6 +1,5 @@
 from torch import empty , cat , arange, Tensor
 from torch.nn.functional import fold, unfold
-import torch
 
 class Module(object):
     def __init__(self):
@@ -14,7 +13,6 @@ class Module(object):
 
     def param(self):
         return []
-
 
 class Sigmoid(Module):
     def __init__(self):
@@ -38,7 +36,8 @@ class Sigmoid(Module):
         :param gradwrtoutput: Tensor: loss gradient with respect to the output
         :return: Tensor: loss gradient with respect to the input
         """
-        return gradwrtoutput * (1 / (1 + (-input).exp())) * ((-input).exp() / (1 + (-input).exp()))
+        e = 1 / (1 + (-self.input).exp())
+        return gradwrtoutput * e * (1-e)
 
     def param(self):
         """
@@ -52,6 +51,7 @@ class ReLU(Module):
     """
     def __init__(self) -> None:
         super().__init__()
+        self.cache = {}
 
     def forward(self, input : Tensor):
         self.cache["value"] = input > 0
@@ -72,18 +72,18 @@ class MSE(Module):
         self.e = pred - target
         return (self.e ** 2).sum() / self.e.shape[0]
     
-    def backward(self, grad : Tensor):
+    def backward(self, grad : Tensor=1.0):
         return 2 * self.e * grad / self.e.shape[0]
 
     def param(self):
         return super().param()
 
     
-class TransposedConv2d(Module):
+class TransposeConv2d(Module):
     """Transposed Convolutional 2D
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=1, output_padding=0) -> None:
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, output_padding=0) -> None:
         super().__init__()
 
         if (isinstance(kernel_size, int)):
@@ -197,14 +197,11 @@ class TransposedConv2d(Module):
 
     def param(self):
         return [(self.weight, self.weightGrads), (self.bias, self.biasGrads)]
+       
 
 class Conv2d(Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
         super().__init__()
-        
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.padding = padding
 
         if (isinstance(kernel_size, int)):
             self.kernel_size = (kernel_size, kernel_size)
@@ -214,79 +211,76 @@ class Conv2d(Module):
         if (isinstance(stride, int)):
             self.stride = (stride, stride)
         elif (isinstance(stride, tuple)):
-            self.stride = stride    
+            self.stride = stride
 
-        self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1]))
+        self.padding = padding
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.weight = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1]))
         self.bias = empty(out_channels)
 
-        self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
+        self.weightGrads = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
         self.biasGrads = empty(out_channels).zero_()
         self.cache = {}
-
-    def _inputMat(self, input : Tensor) -> Tensor:
-        """
-        For input with the shape of (2, 2, h, w), 
-        it will be flatten and transposed into a (2, h*w, 2) matrix:
-                
-              ic0   ic1
-
-        d0:  |h*w| |h*w|
-
-        d1:  |h*w| |h*w|
-
-        """
-
-        (bs, c, _, _) = input.shape
-        return input.reshape(bs, c, -1).transpose(1, 2) # (bs, ic, h, w) -> (bs, h*w, ic)
-
-    def _filterMat(self) -> Tensor:
-        """
-        For weight with the shape of (2, 3, s0, s1), 
-        it will be flatten into a (2, 3*s0*s1) matrix:
-             
-               oc0     oc1     oc2
-
-        ic0: |s0*s1| |s0*s1| |s0*s1|
-
-        ic1: |s0*s1| |s0*s1| |s0*s1|
-
-        """
-
-        return self.weight.reshape(self.in_channels, -1) # (ic, oc, s0, s1) -> (ic, oc*s0*s1)
-
+    
     def forward(self, input : Tensor):
-        bs, ic, H, W = input.size()
-        ic, oc, h, w = self.weight.size()
-        unfold_input = torch.nn.functional.unfold(input, self.kernel_size, self.stride)
-        weight = self.weight.view(oc, -1)
-        output = ((weight @ unfold_input) + self.bias.view(-1,1)).view(bs, oc, ((H-h+1)/self.stride[0]).floor(), -1)
+        # (bs, ic, h, w)
+        (bs, ic, h, w) = input.shape
+        (oc, ic, s0, s1) = self.weight.shape
+        inputMat = unfold(input, kernel_size=self.kernel_size, stride=self.stride, padding=self.padding) # (bs, ic*s0*s1, h*w)
+        filterMat = self.weight.view(oc, -1) # (oc, ic*s0*s1)
 
-        self.cache["unfold_input"] = unfold_input
+        self.cache["inputMat"] = inputMat
         self.cache["input"] = input
 
-        return output
+        oh = (h - s0 + 2*self.padding) // self.stride[0] + 1
+        ow = (w - s1 + 2*self.padding) // self.stride[1] + 1
 
-    def backward(self, gradwrtoutput: Tensor):
-        '''
-        gradwrtoutput shape (N, oc, Hout, Wout)
-        - Hout = 1 + (H + 2 * pad - h) / stride
-        - Wout = 1 + (W + 2 * pad - w) / stride
-        '''
+        (bs, icsos1, hw) = inputMat.shape
+
+        return (filterMat @ inputMat).view(bs, oc, oh, -1) + self.bias.view(self.bias.shape[0], 1, 1)
+
+    def backward(self, grad : Tensor):
+        inputMat = self.cache["inputMat"] # (bs, ic*s0*s1, h*w)
+        (bs, oc, _, _) = grad.shape # (bs, oc, h*w)
+        self.weightGrads += grad.view(bs, oc, -1).bmm(inputMat.transpose(1, 2)).sum(dim=0).reshape(self.weight.shape) # (oc, ic*s0*s1)
+        self.biasGrads += grad.sum(dim=(0, 2, 3))
+
         input = self.cache["input"]
-        gradient_reshape = gradwrtoutput.permute(1, 2, 3, 0).reshape(self.out_channels, -1)
-        unfold_input = self.cache["unfold_input"].permute(2, 0, 1).reshape(gradient_reshape.shape[1], -1) 
-
-        self.weightGrads += (gradient_reshape @ unfold_input).reshape(self.weight.shape)
-        self.biasGrads += gradwrtoutput.sum(dim=(0, 2, 3))
-
-        weight_reshaped = self.weight.reshape(self.out_channels, -1)
-        dx = weight_reshaped.t() @ gradient_reshape
-        dx = dx.reshape(self.cache["unfold_input"].permute(1, 2, 0).shape).permute(2, 0, 1)
-        dx = dx.fold(dx, (input.shape[2],input.shape[3]), kernel_size=self.kernel_size, stride=self.stride)
-        return dx
-
+        (bs, ic, h, w) = input.shape
+        (oc, ic, s0, s1) = self.weight.shape
+        (bs, oc, oh, ow) = grad.shape
+        blocks = (grad.view(bs, oc, oh*ow).transpose(1, 2).reshape(-1, oc).mm(self.weight.view(oc, -1))).reshape(bs, oh*ow, -1).transpose(1, 2) # (bs, ic*s0*s1, oh*ow)
+        return fold(blocks, (h, w), (s0, s1), stride=self.stride, padding=self.padding).reshape(input.shape) # (bs, ic, h, w)
+    
     def param(self):
         return [(self.weight, self.weightGrads), (self.bias, self.biasGrads)]
 
 
-class Upsampling(Module):
+class Sequential(Module):
+    def __init__(self, *mods) -> None:
+        self.names = []
+        self.modules = {}
+        self.params = []
+
+    def add_module(self, name : str, mod : Module):
+        self.names.append(name)
+        self.modules[name] = mod
+        for param in mod.param():
+            self.params.append(param)
+    
+    def forward(self, input : Tensor):
+        y = input
+        for name in self.names:
+            y = self.modules[name].forward(y)
+        return y
+    
+    def backward(self, grad : Tensor = 1.0):
+        for name in reversed(self.names):
+            grad = self.modules[name].backward(grad)
+        return grad
+    
+    def param(self):
+        return self.params
+    
