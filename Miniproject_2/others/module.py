@@ -102,8 +102,8 @@ class TransposeConv2d(Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1]))
-        self.bias = empty(out_channels)
+        self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
+        self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
         self.biasGrads = empty(out_channels).zero_()
@@ -175,7 +175,6 @@ class TransposeConv2d(Module):
         ow = (w - 1) * sw + s1
 
         blocks = self._inputXfilter(input) # (bs, h*w, oc, s0, s1)
-        print(blocks.shape)
 
         output = fold(blocks, (oh, ow), (s0, s1), stride=self.stride)
 
@@ -218,8 +217,8 @@ class Conv2d(Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.weight = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1]))
-        self.bias = empty(out_channels)
+        self.weight = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
+        self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
         self.biasGrads = empty(out_channels).zero_()
@@ -263,7 +262,9 @@ class Sequential(Module):
     def __init__(self, *mods) -> None:
         self.names = []
         self.modules = {}
-        self.param = []
+        self.params = []
+        for i in range(len(mods)):
+            self.add_module(str(i), mods[i])
 
     def add_module(self, name : str, mod : Module):
         self.names.append(name)
@@ -294,8 +295,8 @@ class Sequential(Module):
                 states[name + ".bias"] = mod.bias
         return states
     
-    def load_state_dict(self, states : dict):
-        for k, v in states:
+    def load_state_dict(self, state_dict: 'dict[str, Tensor]'):
+        for k, v in state_dict.items():
             name = k.split('.')[0]
             mod = self.modules[name]
             if isinstance(mod, Conv2d) or isinstance(mod, TransposeConv2d):

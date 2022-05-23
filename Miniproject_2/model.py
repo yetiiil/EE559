@@ -1,22 +1,20 @@
-from numpy import save
 from .others.module import MSE, Sequential, Conv2d, ReLU, TransposeConv2d, Sigmoid
 from .others.optimizer import SGD
 import torch
-from torch import nn
-
+from pathlib import Path
 
 class Model():
     def __init__(self) -> None :
     ## instantiate model + optimizer + loss function + any other stuff you need
         self.net = Sequential()
-        self.net.add_module(Conv2d(3, 48, 3, stride=2))
-        self.net.add_module(ReLU())
-        self.net.add_module(Conv2d(48, 48, 3, stride=2))
-        self.net.add_module(ReLU())
-        self.net.add_module(TransposeConv2d(48, 48, 3, stride=2))
-        self.net.add_module(ReLU())
-        self.net.add_module(TransposeConv2d(48, 3, 3, stride=2))
-        self.net.add_module(Sigmoid())
+        self.net.add_module("conv1", Conv2d(3, 48, 2, stride=2))
+        self.net.add_module("relu1", ReLU())
+        self.net.add_module("conv2", Conv2d(48, 48, 2, stride=2))
+        self.net.add_module("relu2", ReLU())
+        self.net.add_module("trans1", TransposeConv2d(48, 48, 2, stride=2))
+        self.net.add_module("relu3", ReLU())
+        self.net.add_module("trans2", TransposeConv2d(48, 3, 2, stride=2))
+        self.net.add_module("sig", Sigmoid())
 
         for m in self.net.modules:
             if isinstance(m, Conv2d) or isinstance(m, TransposeConv2d):
@@ -31,14 +29,15 @@ class Model():
     def save_model(self, path) -> None :
         torch.save(self.net.state_dict(), path)
 
-    def load_pretrained_model(self, path) -> None:
+    def load_pretrained_model(self) -> None:
+        path = Path(__file__).parent /"model.pt"
         self.net.load_state_dict(torch.load(path))
 
 
     def train(self, train_input, train_target, num_epochs) -> None:
     #:train_input: tensor of size (N, C, H, W) containing a noisy version of the images. same images, which only differs from the input by their noise.
     #:train_target: tensor of size (N, C, H, W) containing another noisy version of the
-       # train_input, train_target = train_input.to(self.device).type(torch.float), train_target.to(self.device).type(torch.float)
+        train_input, train_target = train_input.type(torch.float), train_target.type(torch.float)
         model = self.net
         criterion = self.criterion
         optimizer = self.optimizer
@@ -64,4 +63,4 @@ class Model():
     def predict(self, test_input) -> torch.Tensor:
     #:test ̇input: tensor of size (N1, C, H, W) that has to be denoised by the trained or the loaded network.
     # #: returns a tensor of the size (N1, C, H, W)
-        return self.net(test_input)
+        return self.net.forward(test_input.type(torch.float))
