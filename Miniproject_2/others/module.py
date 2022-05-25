@@ -1,5 +1,7 @@
 from torch import empty , cat , arange, Tensor
 from torch.nn.functional import fold, unfold
+from torch import nn
+import torch
 
 class Module(object):
     def __init__(self):
@@ -103,6 +105,7 @@ class TransposeConv2d(Module):
         self.out_channels = out_channels
 
         self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
+        self.weight = nn.init.kaiming_normal(self.weight)
         self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()

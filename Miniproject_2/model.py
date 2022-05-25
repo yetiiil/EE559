@@ -2,6 +2,16 @@ from .others.module import MSE, Sequential, Conv2d, ReLU, TransposeConv2d, Sigmo
 from .others.optimizer import SGD
 import torch
 from pathlib import Path
+import pickle
+
+
+noisy_imgs, clean_imgs = torch.load('/Users/liyuxiao/Downloads/CS2022/DeepLearning/EE559/val_data.pkl')
+noisy_imgs , clean_imgs = noisy_imgs.float()/255, clean_imgs.float()/255
+
+def psnr(denoised ,ground_truth):
+  # Peak Signal to Noise Ratio : denoised and ground˙truth have range [0 , 1]
+  mse = torch.mean ((denoised - ground_truth) ** 2)
+  return -10 * torch.log10(mse + 10**-8)
 
 class Model():
     def __init__(self) -> None :
@@ -21,17 +31,20 @@ class Model():
                 m.weight.normal_()
                 m.bias.zero_()
 
-        self.optimizer = SGD(self.net.param(), lr=1e-3)
+        self.optimizer = SGD(self.net.param(), lr=1e-2, momentum=0.9)
         self.criterion = MSE()
        # self.device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
         torch.set_grad_enabled(False)
 
-    def save_model(self, path) -> None :
-        torch.save(self.net.state_dict(), path)
+    def save_model(self, model_path = 'bestmodel.pth') -> None :
+        model_path=Path(__file__).parent /"bestmodel.pth"
+        with open(model_path, 'wb') as f:
+            pickle.dump(self.net, f)
 
     def load_pretrained_model(self) -> None:
-        path = Path(__file__).parent /"model.pt"
-        self.net.load_state_dict(torch.load(path))
+        model_path=Path(__file__).parent /"bestmodel.pth"
+        with open(model_path, 'rb') as f:
+            self.net = pickle.load(f)
 
 
     def train(self, train_input, train_target, num_epochs) -> None:
@@ -57,6 +70,7 @@ class Model():
 
                 optimizer.step()
             print(e, acc_loss)
+            print(psnr(clean_imgs, model.forward(noisy_imgs)))
 
         pass
 
