@@ -6,7 +6,7 @@ import pickle
 
 
 noisy_imgs, clean_imgs = torch.load('/Users/liyuxiao/Downloads/CS2022/DeepLearning/EE559/val_data.pkl')
-noisy_imgs , clean_imgs = noisy_imgs.float()/255, clean_imgs.float()/255
+noisy_imgs , clean_imgs = noisy_imgs.float() / 255.0, clean_imgs.float() / 255.0
 
 def psnr(denoised ,ground_truth):
   # Peak Signal to Noise Ratio : denoised and ground˙truth have range [0 , 1]
@@ -56,25 +56,27 @@ class Model():
         optimizer = self.optimizer
         mini_batch_size=100
 
-        for e in range(num_epochs):
+        for epoch in range(num_epochs):
             acc_loss = 0
             for b in range(0, train_input.size(0), mini_batch_size):
                 optimizer.zero_grad()
 
                 output = model.forward(train_input.narrow(0, b, mini_batch_size))
-                loss = criterion.forward(output/255, train_target.narrow(0, b, mini_batch_size)/255)
+                loss = criterion.forward(output / 255.0, train_target.narrow(0, b, mini_batch_size) / 255.0)
                 acc_loss = acc_loss + loss.item()
                 
                 top_grad = criterion.backward()
                 model.backward(top_grad)
 
                 optimizer.step()
-            print(e, acc_loss)
+
+            epoch_loss = acc_loss / len(train_input)
+
+            print('{} Loss: {:.4f}'.format('Current Epoch'+ str(epoch), epoch_loss))
             print(psnr(clean_imgs, model.forward(noisy_imgs)))
 
-        pass
 
     def predict(self, test_input) -> torch.Tensor:
     #:test ̇input: tensor of size (N1, C, H, W) that has to be denoised by the trained or the loaded network.
     # #: returns a tensor of the size (N1, C, H, W)
-        return self.net.forward(test_input.type(torch.float))
+        return (self.net.forward(test_input.type(torch.float)/255.0) * 255).int()

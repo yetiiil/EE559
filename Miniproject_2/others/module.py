@@ -105,7 +105,6 @@ class TransposeConv2d(Module):
         self.out_channels = out_channels
 
         self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
-        self.weight = nn.init.kaiming_normal(self.weight)
         self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
@@ -118,11 +117,8 @@ class TransposeConv2d(Module):
         it will be flatten into a (2, 3*s0*s1) matrix:
              
                oc0     oc1     oc2
-
         ic0: |s0*s1| |s0*s1| |s0*s1|
-
         ic1: |s0*s1| |s0*s1| |s0*s1|
-
         """
 
         return self.weight.reshape(self.in_channels, -1) # (ic, oc, s0, s1) -> (ic, oc*s0*s1)
@@ -133,11 +129,8 @@ class TransposeConv2d(Module):
         it will be flatten and transposed into a (2, h*w, 2) matrix:
                 
               ic0   ic1
-
         d0:  |h*w| |h*w|
-
         d1:  |h*w| |h*w|
-
         """
 
         (bs, c, _, _) = input.shape
@@ -155,7 +148,6 @@ class TransposeConv2d(Module):
                        |s0*s1 + s0*s1 + s0*s1|
         |h*w| |h*w| x                   
                        |s0*s1 + s0*s1 + s0*s1|
-
         """
 
         filterMat = self._filterMat()  # (ic, oc*s0*s1)
@@ -308,5 +300,3 @@ class Sequential(Module):
                     mod.weight = v
                 elif param == "bias":
                     mod.bias = v
-            
-    

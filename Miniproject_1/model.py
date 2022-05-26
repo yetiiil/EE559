@@ -188,15 +188,15 @@ class Model():
         mini_batch_size=100
 
         model.train()
-        print("Starting Training Loop...")
 
+        print("Starting Training Loop...")
         for epoch in range(num_epochs):
-            print('-' * 10)
             running_loss = 0.0
             for b in range(0, train_input.size(0), mini_batch_size):
                 optimizer.zero_grad()
                 denoised_source = model(train_input.narrow(0, b, mini_batch_size))
-                loss = criterion(denoised_source, train_target.narrow(0, b, mini_batch_size))
+                loss = criterion(denoised_source/255.0, train_target.narrow(0, b, mini_batch_size)/255.0)
+                loss.requires_grad_()
                 loss.backward()
                 optimizer.step() 
 
