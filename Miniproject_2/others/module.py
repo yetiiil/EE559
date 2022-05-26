@@ -404,10 +404,7 @@ class upsample(Module):
         (bs,oc,h,_)=grad.size()
         unfold_input = unfold(grad,kernel_size=self.ratio,stride=self.ratio)
         unfold_weight=torch.ones(4)
-        
-        #output = ((unfold_weight @ unfold_input[0,:,:]))
         folding=fold(unfold_input.mean(1),output_size=(2,2),kernel_size=(1))
-        print(folding)
         return folding
 
     def param(self):
@@ -422,7 +419,6 @@ class NearestUpsample():
         a,b,c,d=x.shape
         out=empty(a,1,c*self.ratio,d*self.ratio)
         for i in range (x.shape[1]):
-            
             temp=x[:,i,:,:]
             temp=temp[None,:].permute(1,0,2,3)
             up=upsample(temp,2)
@@ -436,14 +432,14 @@ class NearestUpsample():
         (bs,oc,h,_)=grad.size()  
         out=empty(bs,1,int(h/self.ratio),int(h/self.ratio))
         for i in range (grad.shape[1]):
-            temp=x[:,i,:,:]
+            temp=grad[:,i,:,:]
             temp=temp[None,:].permute(1,0,2,3)
             up=upsample(temp,2)
             temp=up.backward(temp)[None,:]
-            print(temp.shape)
             out=torch.cat((out,temp),0)
         out=out[1:,:,:,:]
         out=out.permute(1,0,2,3)
         return(out)
     def param(self):
         pass
+
