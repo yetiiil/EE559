@@ -1,12 +1,9 @@
 import torch
-
 from torch import nn
 from pathlib import Path
 from torch.nn import functional as F
    
-
 torch.set_grad_enabled(True)
-
 
 def psnr(denoised , ground_truth) :
     # Peak Signal to Noise Ratio : denoised and ground ̇truth have range [0 , 1]
@@ -175,6 +172,7 @@ class Model():
             self.model.load_state_dict(torch.load(model_path))
         else:
             self.model.load_state_dict(torch.load(model_path, map_location='cpu'))
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr = 1e-3, betas=(0.9, 0.999), eps=1e-8)
     
     def train(self, train_input, train_target, num_epochs):
 
@@ -204,7 +202,7 @@ class Model():
                 running_loss += loss.item()
 
             epoch_loss = running_loss / len(train_input)
-            print('{} Loss: {:.4f}'.format('current '+ str(epoch), epoch_loss))
+            #print('{} Loss: {:.4f}'.format('current '+ str(epoch), epoch_loss))
         
     def predict(self,test_input):
         return torch.clip(self.model(test_input.to(self.device).type(torch.float)), 0.0, 255.0)
