@@ -5,9 +5,6 @@ from pathlib import Path
 import pickle
 
 
-noisy_imgs, clean_imgs = torch.load('/Users/liyuxiao/Downloads/CS2022/DeepLearning/EE559/val_data.pkl')
-noisy_imgs , clean_imgs = noisy_imgs.float() / 255.0, clean_imgs.float() / 255.0
-
 def psnr(denoised ,ground_truth):
   # Peak Signal to Noise Ratio : denoised and ground˙truth have range [0 , 1]
   mse = torch.mean ((denoised - ground_truth) ** 2)
@@ -72,10 +69,7 @@ class Model():
 
             epoch_loss = acc_loss / len(train_input)
 
-            print('{} Loss: {:.8f}'.format('Current Epoch'+ str(epoch), epoch_loss))
-            print(psnr(clean_imgs, model.forward(noisy_imgs)))
-
-
+            
     def predict(self, test_input) -> torch.Tensor:
     #:test ̇input: tensor of size (N1, C, H, W) that has to be denoised by the trained or the loaded network.
     # #: returns a tensor of the size (N1, C, H, W)
