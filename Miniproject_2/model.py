@@ -6,7 +6,7 @@ import pickle
 
 
 noisy_imgs, clean_imgs = torch.load('/Users/liyuxiao/Downloads/CS2022/DeepLearning/EE559/val_data.pkl')
-noisy_imgs , clean_imgs = noisy_imgs.float()/255, clean_imgs.float()/255
+noisy_imgs , clean_imgs = noisy_imgs.float(), clean_imgs.float()/255.0
 
 def psnr(denoised ,ground_truth):
   # Peak Signal to Noise Ratio : denoised and ground˙truth have range [0 , 1]
@@ -31,12 +31,12 @@ class Model():
                 m.weight.normal_()
                 m.bias.zero_()
 
-        self.optimizer = SGD(self.net.param(), lr=1e-2, momentum=0.9)
+        self.optimizer = SGD(self.net.param(), lr=1e-1, momentum=0.9)
         self.criterion = MSE()
-       # self.device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
-        torch.set_grad_enabled(False)
+        #self.device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+        #torch.set_grad_enabled(False)
 
-    def save_model(self, model_path = 'bestmodel.pth') -> None :
+    def save_model(self) -> None :
         model_path=Path(__file__).parent /"bestmodel.pth"
         with open(model_path, 'wb') as f:
             pickle.dump(self.net, f)
@@ -56,7 +56,7 @@ class Model():
         optimizer = self.optimizer
         mini_batch_size=100
 
-        for e in range(num_epochs):
+        for epoch in range(num_epochs):
             acc_loss = 0
             for b in range(0, train_input.size(0), mini_batch_size):
                 optimizer.zero_grad()
@@ -69,8 +69,11 @@ class Model():
                 model.backward(top_grad)
 
                 optimizer.step()
-            print(e, acc_loss)
-            print(psnr(clean_imgs, model.forward(noisy_imgs)))
+                
+            epoch_loss = acc_loss / len(train_input)
+
+            print('{} Loss: {:.4f}'.format('Current Epoch'+ str(epoch), epoch_loss))
+            print(psnr(clean_imgs, model.forward(noisy_imgs)/255.0))
 
         pass
 

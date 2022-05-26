@@ -104,12 +104,12 @@ class TransposeConv2d(Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
-        self.weight = nn.init.kaiming_normal(self.weight)
-        self.bias = empty(out_channels).normal_()
+        self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).normal_().float()
+        self.weight = nn.init.kaiming_normal_(self.weight)
+        self.bias = empty(out_channels).normal_().float()
 
-        self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
-        self.biasGrads = empty(out_channels).zero_()
+        self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_().float()
+        self.biasGrads = empty(out_channels).zero_().float()
         self.cache = {}
 
     def _filterMat(self) -> Tensor:
@@ -220,11 +220,12 @@ class Conv2d(Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.weight = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
-        self.bias = empty(out_channels).normal_()
+        self.weight = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).normal_().float()
+        self.weight = nn.init.kaiming_normal_(self.weight)
+        self.bias = empty(out_channels).normal_().float()
 
-        self.weightGrads = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
-        self.biasGrads = empty(out_channels).zero_()
+        self.weightGrads = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).zero_().float()
+        self.biasGrads = empty(out_channels).zero_().float()
         self.cache = {}
     
     def forward(self, input : Tensor):

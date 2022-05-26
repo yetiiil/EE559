@@ -4,10 +4,6 @@ from torch import nn
 from pathlib import Path
 from torch.nn import functional as F
    
-
-torch.set_grad_enabled(True)
-
-
 def psnr(denoised , ground_truth) :
     # Peak Signal to Noise Ratio : denoised and ground ̇truth have range [0 , 1]
     mse = torch.mean(( denoised - ground_truth ) ** 2)
@@ -165,6 +161,7 @@ class Model():
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr = 1e-3, betas=(0.9, 0.999), eps=1e-8)
         self.criterion = nn.MSELoss()
 
+
     def save_model(self) -> None :
         torch.save(self.model.state_dict(), 'bestmodel.pth')
 
@@ -197,6 +194,7 @@ class Model():
                 optimizer.zero_grad()
                 denoised_source = model(train_input.narrow(0, b, mini_batch_size))
                 loss = criterion(denoised_source, train_target.narrow(0, b, mini_batch_size))
+                loss.requires_grad_()
                 loss.backward()
                 optimizer.step() 
 
