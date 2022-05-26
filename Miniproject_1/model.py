@@ -207,4 +207,4 @@ class Model():
             print('{} Loss: {:.4f}'.format('current '+ str(epoch), epoch_loss))
         
     def predict(self,test_input):
-        return self.model(test_input.to(self.device).type(torch.float))
+        return torch.clip(self.model(test_input.to(self.device).type(torch.float)), 0.0, 255.0)
