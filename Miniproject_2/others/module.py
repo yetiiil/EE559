@@ -82,7 +82,7 @@ class MSE(Module):
         return super().param()
 
     
-class TransposeConv2d(Module):
+class Upsampling(Module):
     """Transposed Convolutional 2D
     """
 
@@ -105,6 +105,7 @@ class TransposeConv2d(Module):
         self.out_channels = out_channels
 
         self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
+        self.weight = nn.init.kaiming_normal_(self.weight)
         self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
@@ -213,6 +214,7 @@ class Conv2d(Module):
         self.out_channels = out_channels
 
         self.weight = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
+        self.weight = nn.init.kaiming_normal_(self.weight)
         self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
@@ -285,7 +287,7 @@ class Sequential(Module):
         states = {}
         for name in self.names:
             mod = self.modules[name]
-            if isinstance(mod, Conv2d) or isinstance(mod, TransposeConv2d):
+            if isinstance(mod, Conv2d) or isinstance(mod, Upsampling):
                 states[name + ".weight"] = mod.weight
                 states[name + ".bias"] = mod.bias
         return states
@@ -294,7 +296,7 @@ class Sequential(Module):
         for k, v in state_dict.items():
             name = k.split('.')[0]
             mod = self.modules[name]
-            if isinstance(mod, Conv2d) or isinstance(mod, TransposeConv2d):
+            if isinstance(mod, Conv2d) or isinstance(mod, Upsampling):
                 param = k.split('.')[1]
                 if param == "weight":
                     mod.weight = v
