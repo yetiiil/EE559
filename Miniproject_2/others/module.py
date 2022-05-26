@@ -1,5 +1,7 @@
 from torch import empty , cat , arange, Tensor
 from torch.nn.functional import fold, unfold
+from torch import nn
+import torch
 
 class Module(object):
     def __init__(self):
@@ -80,7 +82,7 @@ class MSE(Module):
         return super().param()
 
     
-class TransposeConv2d(Module):
+class Upsampling(Module):
     """Transposed Convolutional 2D
     """
 
@@ -103,6 +105,7 @@ class TransposeConv2d(Module):
         self.out_channels = out_channels
 
         self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
+        self.weight = nn.init.kaiming_normal_(self.weight)
         self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
@@ -115,11 +118,8 @@ class TransposeConv2d(Module):
         it will be flatten into a (2, 3*s0*s1) matrix:
              
                oc0     oc1     oc2
-
         ic0: |s0*s1| |s0*s1| |s0*s1|
-
         ic1: |s0*s1| |s0*s1| |s0*s1|
-
         """
 
         return self.weight.reshape(self.in_channels, -1) # (ic, oc, s0, s1) -> (ic, oc*s0*s1)
@@ -130,11 +130,8 @@ class TransposeConv2d(Module):
         it will be flatten and transposed into a (2, h*w, 2) matrix:
                 
               ic0   ic1
-
         d0:  |h*w| |h*w|
-
         d1:  |h*w| |h*w|
-
         """
 
         (bs, c, _, _) = input.shape
@@ -152,7 +149,6 @@ class TransposeConv2d(Module):
                        |s0*s1 + s0*s1 + s0*s1|
         |h*w| |h*w| x                   
                        |s0*s1 + s0*s1 + s0*s1|
-
         """
 
         filterMat = self._filterMat()  # (ic, oc*s0*s1)
@@ -218,6 +214,7 @@ class Conv2d(Module):
         self.out_channels = out_channels
 
         self.weight = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
+        self.weight = nn.init.kaiming_normal_(self.weight)
         self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
@@ -290,7 +287,7 @@ class Sequential(Module):
         states = {}
         for name in self.names:
             mod = self.modules[name]
-            if isinstance(mod, Conv2d) or isinstance(mod, TransposeConv2d):
+            if isinstance(mod, Conv2d) or isinstance(mod, Upsampling):
                 states[name + ".weight"] = mod.weight
                 states[name + ".bias"] = mod.bias
         return states
@@ -299,11 +296,9 @@ class Sequential(Module):
         for k, v in state_dict.items():
             name = k.split('.')[0]
             mod = self.modules[name]
-            if isinstance(mod, Conv2d) or isinstance(mod, TransposeConv2d):
+            if isinstance(mod, Conv2d) or isinstance(mod, Upsampling):
                 param = k.split('.')[1]
                 if param == "weight":
                     mod.weight = v
                 elif param == "bias":
                     mod.bias = v
-            
-    
