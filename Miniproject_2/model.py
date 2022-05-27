@@ -4,11 +4,12 @@ import torch
 from pathlib import Path
 import pickle
 
+noisy_imgs, clean_imgs = torch.load('/Users/liyuxiao/Downloads/CS2022/DeepLearning/EE559/val_data.pkl')
+noisy_imgs , clean_imgs = noisy_imgs.float() / 255.0, clean_imgs.float() / 255.0
 
-def psnr(denoised ,ground_truth):
-  # Peak Signal to Noise Ratio : denoised and ground˙truth have range [0 , 1]
-  mse = torch.mean ((denoised - ground_truth) ** 2)
-  return -10 * torch.log10(mse + 10**-8)
+def psnr(x, y, max_range=1.0):
+    assert x.shape == y.shape and x.ndim == 4
+    return 20 * torch.log10(torch.tensor(max_range)) - 10 * torch.log10(((x-y) ** 2).mean((1,2,3))).mean()
 
 class Model():
     def __init__(self) -> None :
@@ -42,6 +43,7 @@ class Model():
         model_path=Path(__file__).parent /"bestmodel.pth"
         with open(model_path, 'rb') as f:
             self.net = pickle.load(f)
+            self.optimizer = Adam(self.net.param())
 
 
     def train(self, train_input, train_target, num_epochs) -> None:
@@ -68,6 +70,9 @@ class Model():
                 optimizer.step()
 
             epoch_loss = acc_loss / len(train_input)
+            #print('{} Loss: {:.8f}'.format('Current Epoch'+ str(epoch), epoch_loss))
+            #print(psnr(clean_imgs, model.forward(noisy_imgs)))
+
 
             
     def predict(self, test_input) -> torch.Tensor:

@@ -1,7 +1,6 @@
 from torch import empty , cat , arange, Tensor
 from torch.nn.functional import fold, unfold
-from torch import nn
-import torch
+from .kaiming import kaiming_normal_
 
 class Module(object):
     def __init__(self):
@@ -105,7 +104,7 @@ class Upsampling(Module):
         self.out_channels = out_channels
 
         self.weight = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
-        self.weight = nn.init.kaiming_normal_(self.weight)
+        self.weight = kaiming_normal_(self.weight)
         self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((in_channels, out_channels, self.kernel_size[0], self.kernel_size[1])).zero_()
@@ -214,7 +213,7 @@ class Conv2d(Module):
         self.out_channels = out_channels
 
         self.weight = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).normal_()
-        self.weight = nn.init.kaiming_normal_(self.weight)
+        self.weight = kaiming_normal_(self.weight)
         self.bias = empty(out_channels).normal_()
 
         self.weightGrads = empty((out_channels, in_channels, self.kernel_size[0], self.kernel_size[1])).zero_()

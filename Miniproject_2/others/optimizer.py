@@ -25,10 +25,7 @@ class Adam():
         self.lr = lr
         self.beta1 = beta1
         self.beta2 = beta2
-        #self.beta1prevs = [empty(x.shape).zero_() for x, _ in self.params]
-        #self.beta2prevs = [empty(x.shape).zero_() for x, _ in self.params]
         self.epsilon = epsilon
-        self.theta_0 = 0	
         self.m_t = [empty(x.shape).zero_() for x, _ in self.params]
         self.v_t = [empty(x.shape).zero_() for x, _ in self.params]
         self.t = 0
@@ -38,8 +35,6 @@ class Adam():
         for i, (weight, grad) in enumerate(self.params):
             self.m_t[i] = self.beta1 * self.m_t[i] + (1-self.beta1) * grad
             self.v_t[i] = self.beta2 * self.v_t[i] + (1-self.beta2) * (grad * grad)
-            #self.beta1prevs[i] = -grad * self.lr + self.momentum * self.prevs[i]
-            #self.beta2prevs[i] = -grad * self.lr + self.momentum * self.prevs[i]
             m_hat = self.m_t[i] / (1 - (self.beta1**self.t))
             v_hat = self.v_t[i] / (1 - (self.beta1**self.t))
             weight.add_(-self.lr * m_hat/(v_hat.sqrt() + self.epsilon))
