@@ -1,4 +1,4 @@
-from torch import empty , cat , arange, Tensor
+from torch import empty , cat , Tensor
 from torch.nn.functional import fold, unfold
 from .kaiming import kaiming_normal_
 
@@ -302,6 +302,8 @@ class Sequential(Module):
                 elif param == "bias":
                     mod.bias = v
                     
+                    
+#called in NearestUpsampling                    
 class upsample(Module):
     """Transposed Convolutional 2D
     """
@@ -409,7 +411,7 @@ class upsample(Module):
     def param(self):
         return [(self.weight, self.weightGrads), (self.bias, self.biasGrads)]
 
-
+#implements an upsampling layer but only taking ratio when initiating and imput when using forward.
 class NearestUpsample():
     def __init__(self,ratio):
         self.ratio=ratio
