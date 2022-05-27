@@ -114,7 +114,7 @@ class Tests(unittest.TestCase):
         model_outputs = torch.cat(model_outputs, dim=0) / 255.0
 
         output_psnr = self.compute_psnr(model_outputs, val_target)
-        print(f"[PSNR {project_number}: {output_psnr:.2f} dB]")
+        print(f"[PSNR {project_number}: {output_psnr:.8f} dB]")
 
 
     def test_train_model(self):
@@ -146,7 +146,7 @@ class Tests(unittest.TestCase):
         model_outputs = torch.cat(model_outputs, dim=0) / 255.0
 
         output_psnr_after = self.compute_psnr(model_outputs, val_target)
-        print(f"[PSNR {project_number}: {output_psnr_after:.2f} dB]")
+        print(f"[PSNR {project_number}: {output_psnr_after:.8f} dB]")
         self.assertGreater(output_psnr_after, output_psnr_before)
 
 
@@ -159,7 +159,7 @@ class Tests(unittest.TestCase):
         with self.subTest("Testing convolution"):
             Conv2d = model_module.Conv2d
             conv = Conv2d(3, 3, 3)
-            self.assertTrue(torch.allclose(conv.forward(x), F.conv2d(x, conv.weight, conv.bias),atol=1e-6))
+            self.assertTrue(torch.allclose(conv.forward(x), F.conv2d(x, conv.weight, conv.bias)))
 
         with self.subTest("Testing sigmoid"):
             Sigmoid = model_module.Sigmoid

@@ -1,13 +1,8 @@
 from .others.module import MSE, Sequential, Conv2d, ReLU, Upsampling, Sigmoid
 from .others.optimizer import SGD, Adam
-import torch
 from pathlib import Path
 import pickle
-
-
-def psnr(x, y, max_range=1.0):
-    assert x.shape == y.shape and x.ndim == 4
-    return 20 * torch.log10(torch.tensor(max_range)) - 10 * torch.log10(((x-y) ** 2).mean((1,2,3))).mean()
+import torch
 
 class Model():
     def __init__(self) -> None :
@@ -21,11 +16,6 @@ class Model():
         self.net.add_module("relu3", ReLU())
         self.net.add_module("trans2", Upsampling(48, 3, 2, stride=2))
         self.net.add_module("sig", Sigmoid())
-
-        for m in self.net.modules:
-            if isinstance(m, Conv2d) or isinstance(m, Upsampling):
-                m.weight.normal_()
-                m.bias.zero_()
 
         self.optimizer = Adam(self.net.param())
         self.criterion = MSE()
@@ -66,12 +56,6 @@ class Model():
                 model.backward(top_grad)
 
                 optimizer.step()
-
-            epoch_loss = acc_loss / len(train_input)
-            #print('{} Loss: {:.8f}'.format('Current Epoch'+ str(epoch), epoch_loss))
-            #print(psnr(clean_imgs, model.forward(noisy_imgs)))
-
-
             
     def predict(self, test_input) -> torch.Tensor:
     #:test ̇input: tensor of size (N1, C, H, W) that has to be denoised by the trained or the loaded network.
