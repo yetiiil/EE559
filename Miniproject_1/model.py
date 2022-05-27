@@ -13,6 +13,8 @@ def psnr(denoised , ground_truth) :
 class mod(nn.Module):
     def __init__(self, skip_connections = True, batch_normalization = True):
         super().__init__()
+        torch.set_grad_enabled(True)
+
         self.rel=nn.LeakyReLU(0.1)
         
         self.conv1 = nn.Conv2d(3, 3*4,
@@ -173,6 +175,7 @@ class Model():
         else:
             self.model.load_state_dict(torch.load(model_path, map_location='cpu'))
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr = 1e-3, betas=(0.9, 0.999), eps=1e-8)
+        torch.set_grad_enabled(True)
     
     def train(self, train_input, train_target, num_epochs):
 
