@@ -4,8 +4,6 @@ import torch
 from pathlib import Path
 import pickle
 
-noisy_imgs, clean_imgs = torch.load('/Users/liyuxiao/Downloads/CS2022/DeepLearning/EE559/val_data.pkl')
-noisy_imgs , clean_imgs = noisy_imgs.float() / 255.0, clean_imgs.float() / 255.0
 
 def psnr(x, y, max_range=1.0):
     assert x.shape == y.shape and x.ndim == 4
